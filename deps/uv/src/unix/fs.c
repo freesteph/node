@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h> /* PATH_MAX */
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -205,6 +206,13 @@ skip:
 # else
   return futimes(req->file, tv);
 # endif
+#elif defined(_AIX71)
+  struct timespec ts[2];
+  ts[0].tv_sec  = req->atime;
+  ts[0].tv_nsec = (unsigned long)(req->atime * 1000000) % 1000000 * 1000;
+  ts[1].tv_sec  = req->mtime;
+  ts[1].tv_nsec = (unsigned long)(req->mtime * 1000000) % 1000000 * 1000;
+  return futimens(req->file, ts);
 #else
   errno = ENOSYS;
   return -1;
@@ -383,7 +391,7 @@ static ssize_t uv__fs_pathmax_size(const char* path) {
 #if defined(PATH_MAX)
     return PATH_MAX;
 #else
-    return 4096;
+#error "PATH_MAX undefined in the current platform"
 #endif
   }
 
